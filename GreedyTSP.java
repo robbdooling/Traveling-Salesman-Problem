@@ -41,14 +41,16 @@ public class GreedyTSP {
 	    System.exit(0);
 	}
 	
-	if ((n < 1) || (n > 13)) {
+	if ((n < 1) || (n > 1013)) {
 	    System.out.println("Number of vertices must be between 1 and 13");
 	    System.exit(0);
 	}
-	long startTime = System.currentTimeMillis();
+	
 
 	// create graph, vertices, adjacency matrix, and paths
 	Graph g = new Graph(n, seed);
+
+	long startTime = System.currentTimeMillis();
 	
 	// get graph edges with quicksort
 	double[][] adjMatrix = g.getAdjacencyMatrix();
@@ -66,21 +68,22 @@ public class GreedyTSP {
 	 // Gather edges that are used for tour and add up distance
 	for (int i = 0; i < edges.size(); i++) {
 	    for (int j = 0; j < visited.size() - 1; j++) {
-		if (((visited.get(j) == edges.get(i).left()) &&
-		     (visited.get(j+1) == edges.get(i).right())))
-		{
-		    if (edges.get(i).right() != edges.get(i).left()) {
+		if (((visited.get(j) == edges.get(i).getLeft()) &&
+		     (visited.get(j+1) == edges.get(i).getRight()))) {
+		    if (edges.get(i).getRight() != edges.get(i).getLeft()) {
 			tourEdges.add(edges.get(i));
-			greedyDistance += edges.get(i).dist();
+			greedyDistance += edges.get(i).getDist();
 		    }
 		}
 	    }
 	}
+	
+	long endTime = System.currentTimeMillis();
 	    
 	// Begin output
 	if (n <= 10) {
 	    // Print vertices
-	    System.out.println(g.getVerticesString());
+	    System.out.println(g.getVerticesString(g.getVertices()));
 	
 	    // Print adjacency matrix
 	    System.out.println("Adjacency matrix of graph weights:\n\n" + g.getMatrixString() + "\n");
@@ -112,7 +115,6 @@ public class GreedyTSP {
 	    System.out.print(" " + visited.get(i));
 	}
 	
-	long endTime = System.currentTimeMillis();
 	System.out.println("\nRuntime for greedy TSP   : " + (endTime - startTime) + " milliseconds");
     }
     
@@ -163,20 +165,20 @@ public class GreedyTSP {
 	    // sort based on distance
 	    // if distance ties, sort based on left vertex
 	    // if distance + left ties, sort based on right vertex
-	    while ((edges.get(i).dist() < pivot.dist()) ||
-		   ((edges.get(i).dist() == pivot.dist()) &&
-		    (edges.get(i).left() < pivot.left())) ||
-		   ((edges.get(i).dist() == pivot.dist()) &&
-		    (edges.get(i).left() == pivot.left()) &&
-		    (edges.get(i).right() < pivot.right()))) {
+	    while ((edges.get(i).getDist() < pivot.getDist()) ||
+		   ((edges.get(i).getDist() == pivot.getDist()) &&
+		    (edges.get(i).getLeft() < pivot.getLeft())) ||
+		   ((edges.get(i).getDist() == pivot.getDist()) &&
+		    (edges.get(i).getLeft() == pivot.getLeft()) &&
+		    (edges.get(i).getRight() < pivot.getRight()))) {
     		i++;
 	    }
-	    while ((edges.get(j).dist() > pivot.dist()) ||
-		   ((edges.get(j).dist() == pivot.dist()) &&
-		    (edges.get(j).left() > pivot.left())) ||
-		   ((edges.get(j).dist() == pivot.dist()) &&
-		    (edges.get(j).left() == pivot.left()) &&
-		    (edges.get(j).right() > pivot.right()))) {
+	    while ((edges.get(j).getDist() > pivot.getDist()) ||
+		   ((edges.get(j).getDist() == pivot.getDist()) &&
+		    (edges.get(j).getLeft() > pivot.getLeft())) ||
+		   ((edges.get(j).getDist() == pivot.getDist()) &&
+		    (edges.get(j).getLeft() == pivot.getLeft()) &&
+		    (edges.get(j).getRight() > pivot.getRight()))) {
     		j--;
 	    }
        
@@ -207,14 +209,14 @@ public class GreedyTSP {
 	visited.add(current);
 	
 	for (int i = 0; i < edges.size(); i++) {
-	    if ((edges.get(i).left() == current) &&
-		(visited.contains(edges.get(i).right()) == false)) {
-		visited = greedyTSP(edges, visited, edges.get(i).right());
+	    if ((edges.get(i).getLeft() == current) &&
+		(visited.contains(edges.get(i).getRight()) == false)) {
+		visited = greedyTSP(edges, visited, edges.get(i).getRight());
 		break;
 	    }
-	    else if ((edges.get(i).right() == current) &&
-		(visited.contains(edges.get(i).left()) == false)) {
-		visited = greedyTSP(edges, visited, edges.get(i).left());
+	    else if ((edges.get(i).getRight() == current) &&
+		(visited.contains(edges.get(i).getLeft()) == false)) {
+		visited = greedyTSP(edges, visited, edges.get(i).getLeft());
 		break;
 	    }
 	}

@@ -45,11 +45,10 @@ public class MstTSP {
 	    System.exit(0);
 	}
 	
-	if ((n < 1) || (n > 13)) {
+	if ((n < 1) || (n > 1013)) {
 	    System.out.println("Number of vertices must be between 1 and 13");
 	    System.exit(0);
 	}
-	long startTime = System.currentTimeMillis();
 
 	// create graph, vertices, adjacency matrix, and paths
 	g = new Graph(n, seed);
@@ -61,7 +60,8 @@ public class MstTSP {
 	parents = new Vertex[n];
 	parents[0] = new Vertex(0, 0);
 	parents[0].setDist(-1);
-			
+	
+		long startTime = System.currentTimeMillis();
 	// Initialize the priority queue to contain every vertex with equal priority, infinity
 	for (int i = 0; i < n; i++) {
 	    priorityQueue.add(g.getVertex(i));
@@ -89,9 +89,9 @@ public class MstTSP {
 		    //	parent[v] = u
 		    //	PQ[v].setPriority(weight(u, v))
 	
-		    if (g.getDistance(u, v) < v.getDist()) {
+		    if (g.getDist(u, v) < v.getDist()) {
 			parents[v.getNumber()] = u;
-			priorityQueue.get(i).setDist(g.getDistance(u, v));
+			priorityQueue.get(i).setDist(g.getDist(u, v));
 		    }
 		}
 	    }
@@ -108,10 +108,12 @@ public class MstTSP {
 	// always end tour with vertex 0 
 	tourVertices.add(g.getVertex(0));
 	
+	long endTime = System.currentTimeMillis();
+		
 	// Begin output
 	if (n <= 10) {
 	    // Print vertices
-	    System.out.println(g.getVerticesString());
+	    System.out.println(g.getVerticesString(g.getVertices()));
 	
 	    // Print adjacency matrix
 	    System.out.println("Adjacency matrix of graph weights:\n\n" + g.getMatrixString() + "\n");
@@ -147,7 +149,7 @@ public class MstTSP {
 	}
 	
 	for (int i = 1; i < tourVertices.size(); i++) {
-	    mstDistance += g.getDistance(tourVertices.get(i), tourVertices.get(i-1));
+	    mstDistance += g.getDist(tourVertices.get(i), tourVertices.get(i-1));
 	}
 	
 	System.out.print("\nDistance using mst: " + df.format(mstDistance) + " for path ");
@@ -155,7 +157,6 @@ public class MstTSP {
 	    System.out.print(tourVertices.get(i).getNumber() + " ");
 	}
 	
-	long endTime = System.currentTimeMillis();
 	System.out.println("\nRuntime for Mst TSP   : " + (endTime - startTime) + " milliseconds");
     }
     

@@ -40,15 +40,14 @@ public class Graph {
         // generate unique coordinates for vertices
         for (int i = 0; i < n; i++) {
             Vertex v = generateUniqueCoordinate(xGenerator, yGenerator);
+	    v.setNumber(i);
             vertices.add(v);
         }
         
         // generate adjacency matrix based on the vertices
-        for (int i = 0; i < n; i++)
-        {
-            for (int j = 0; j < n; j++)
-            {
-                adjacencyMatrix[i][j] = getDistance(vertices.get(i), vertices.get(j));
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                adjacencyMatrix[i][j] = getDist(vertices.get(i), vertices.get(j));
             }
         }
 	
@@ -93,14 +92,13 @@ public class Graph {
         an ending Vertex (x, y coordinate)
         returns the absolute distance between the two
     */
-    public double getDistance(Vertex a, Vertex b) {
+    public double getDist(Vertex a, Vertex b) {
         double yDistance = Math.abs(b.y() - a.y());
         double xDistance = Math.abs(b.x() - a.x());
         // distance = square root of (yDistance^2 + xDistance^2)
         double distance = Math.sqrt(Math.pow(yDistance, 2) + Math.pow(xDistance, 2));
         return distance;
-    }
-        
+    }       
 	
     public Vertex getVertex(int i) {
 	return vertices.get(i);
@@ -112,21 +110,11 @@ public class Graph {
     public double[][] getAdjacencyMatrix() {
         return adjacencyMatrix;
     }
-    
-    public String getVerticesString() {
-        String verticesString = "X-Y Coordinates:\n";
-        for (int i = 0; i < vertices.size(); i++) {
-	    verticesString += "v" + i + ": (" + vertices.get(i).x() + "," + vertices.get(i).y() + ") ";
-	}
-        verticesString += "\n";
-        return verticesString;
-    }
-    
+        
     public String getMatrixString() {
         String matrixString = "";
         // print numbered columns (will look like this:   0   1   2...)
-	for (int i = 0; i < n; i++)
-	{
+	for (int i = 0; i < n; i++) {
 	    matrixString += "      " + i;
 	}
 	
@@ -140,5 +128,112 @@ public class Graph {
 	    }
 	}
         return matrixString;
+    }
+        
+    public String getVerticesString(ArrayList<Vertex> verticesToPrint) {
+        String verticesString = "";
+        for (int i = 0; i < verticesToPrint.size(); i++) {
+	    verticesString += "v" + verticesToPrint.get(i).getNumber()
+			    + ": (" + verticesToPrint.get(i).x()
+			    + "," + verticesToPrint.get(i).y() + ") ";
+	}
+        verticesString += "\n";
+        return verticesString;
+    }
+    
+    public ArrayList<Vertex> sortVertices(ArrayList<Vertex> toSort) {
+	
+	Vertex[] vertexArray = new Vertex[toSort.size()];
+	toSort.toArray(vertexArray);
+	Vertex[] emptyArray = new Vertex[toSort.size()];
+		
+	sort(vertexArray, 0, vertexArray.length);
+	
+	ArrayList<Vertex> toReturn = new ArrayList<Vertex>(Arrays.asList(vertexArray));
+	return toReturn;
+    }
+    
+    // The below is a modification to existing Java source code to sort based on x-coordinates
+    // Java code from http://grepcode.com/file/repository.grepcode.com/java/root/jdk/openjdk/6-b14/java/util/Arrays.java
+    public static void sort(Vertex[] src, int off, int len) {
+	
+	// Insertion sort on smallest arrays
+        if (len < 7) {
+            for (int i=off; i<len+off; i++)
+                for (int j = i; j > off && src[j-1].x() > src[j].x(); j--)
+                    swap(src, j, j-1);
+            return;
+        }
+
+        // Choose a partition element, v
+        int m = off + (len >> 1);       // Small arrays, middle element
+        if (len > 7) {
+            int l = off;
+            int n = off + len - 1;
+            if (len > 40) {        // Big arrays, pseudomedian of 9
+                int s = len/8;
+                l = med3(src, l,     l+s, l+2*s);
+                m = med3(src, m-s,   m,   m+s);
+                n = med3(src, n-2*s, n-s, n);
+            }
+            m = med3(src, l, m, n); // Mid-size, med of 3
+        }
+        int v = src[m].x();
+
+        // Establish Invariant: v* (<v)* (>v)* v*
+        int a = off, b = a, c = off + len - 1, d = c;
+        while(true) {
+            while (b <= c && src[b].x() <= v) {
+                if (src[b].x() == v)
+                    swap(src, a++, b);
+                b++;
+            }
+            while (c >= b && src[c].x() >= v) {
+                if (src[c].x() == v)
+                    swap(src, c, d--);
+                c--;
+            }
+            if (b > c)
+                break;
+            swap(src, b++, c--);
+        }
+
+        // Swap partition elements back to middle
+        int s, n = off + len;
+        s = Math.min(a-off, b-a  );  vecswap(src, off, b-s, s);
+        s = Math.min(d-c,   n-d-1);  vecswap(src, b,   n-s, s);
+
+        // Recursively sort non-partition-elements
+        if ((s = b-a) > 1)
+            sort(src, off, s);
+        if ((s = d-c) > 1)
+            sort(src, n-s, s);
+    }
+    
+    // from http://grepcode.com/file/repository.grepcode.com/java/root/jdk/openjdk/6-b14/java/util/Arrays.java
+    private static void swap(Vertex[] src, int a, int b) {
+        Vertex t = src[a];
+        src[a] = src[b];
+        src[b] = t;
+    }
+    
+    /**
+     * Swaps x[a .. (a+n-1)] with x[b .. (b+n-1)].
+     */
+     // from http://grepcode.com/file/repository.grepcode.com/java/root/jdk/openjdk/6-b14/java/util/Arrays.java
+    private static void vecswap(Vertex[] src, int a, int b, int n) {
+        for (int i=0; i<n; i++, a++, b++)
+            swap(src, a, b);
+    }
+    
+    /**
+     * Returns the index of the median of the three indexed longs.
+     */
+    // from http://grepcode.com/file/repository.grepcode.com/java/root/jdk/openjdk/6-b14/java/util/Arrays.java
+  
+    private static int med3(Vertex[] src, int a, int b, int c) {
+        return (src[a].x() < src[b].x() ?
+                (src[b].x() < src[c].x() ? b : src[a].x() < src[c].x() ? c : a) :
+                (src[b].x() > src[c].x() ? b : src[a].x() > src[c].x() ? c : a));
     }
 }

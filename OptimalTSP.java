@@ -22,7 +22,6 @@ public class OptimalTSP {
     static ArrayList<Double> pathDistances = new ArrayList<Double>();
     static double distance;
 	    
-	    
     static DecimalFormat df = new DecimalFormat("0.00");
     
     public static void main (String[] args) {
@@ -50,11 +49,11 @@ public class OptimalTSP {
 	}
 
 	// create graph, vertices, adjacency matrix, and paths
-	
-	long startTime = System.currentTimeMillis();
 		
 	Graph g = new Graph(n, seed);
 	
+	long startTime = System.currentTimeMillis();
+		
 	// generate first path
         for (int i = 1; i < n; i++) {
             currentPath.add(i);
@@ -79,10 +78,12 @@ public class OptimalTSP {
             
         pathDistances = generatePathDistances(paths, g.getAdjacencyMatrix());
 	
+	long endTime = System.currentTimeMillis();
+		
 	// Begin output
 	if (n <= 10) {
 	    // Print vertices
-	    System.out.println(g.getVerticesString());
+	    System.out.println(g.getVerticesString(g.getVertices()));
 	
 	    // Print adjacency matrix
 	    System.out.println(g.getMatrixString() + "\n");
@@ -92,8 +93,6 @@ public class OptimalTSP {
 	    // Print possible paths
 	    System.out.println(getPathsString());
 	}
-	
-	long endTime = System.currentTimeMillis();
 	
 	// Print optimal path
 	System.out.println(getOptimalString());

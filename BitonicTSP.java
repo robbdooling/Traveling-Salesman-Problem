@@ -1,4 +1,6 @@
 /*
+ * BitonicTSP - Solve the Traveling Sealesman problem using a bitonic tour
+ *
  * Robb Dooling
  * robbdooling@gmail.com
  * http://www.cs.rit.edu/~rlc/Courses/Algorithms/Projects/20131/Proj4/proj4.html
@@ -17,12 +19,16 @@ import java.text.*;
 public class BitonicTSP {
     
     static Graph g;
-    static ArrayList<Vertex> priorityQueue = new ArrayList<Vertex>();
-    static Vertex[] parents;
-    static boolean[] visited;
-    static ArrayList<Vertex> tourVertices = new ArrayList<Vertex>();
-    static double mstWeight = 0.0;
-    static double mstDistance = 0.0;
+    static double bitonicDistance = 0.0;
+    static ArrayList<Vertex> unsortedVertices;
+    static ArrayList<Vertex> sortedVertices;
+    
+    static double[][] adjMatrix;
+    
+    static double[][] lTable;
+    static int[][] nTable;
+    
+    static ArrayList<Integer> bitonicTour;
     
     public static void main (String[] args) {
 	
@@ -39,150 +45,202 @@ public class BitonicTSP {
 	    n = Integer.parseInt(args[0]);
 	    seed = Long.parseLong(args[1]);
 	}
-	
 	catch (NumberFormatException e) {
 	    System.out.println("Command line args must be integers");
 	    System.exit(0);
 	}
 	
-	if ((n < 1) || (n > 13)) {
+	if ((n < 1) || (n > 1013)) {
 	    System.out.println("Number of vertices must be between 1 and 13");
 	    System.exit(0);
 	}
-	long startTime = System.currentTimeMillis();
-
+	
 	// create graph, vertices, adjacency matrix, and paths
 	g = new Graph(n, seed);
 	
 	// generate graph edges
-	double[][] adjMatrix = g.getAdjacencyMatrix();
+	adjMatrix = g.getAdjacencyMatrix();
 	
-	// set up array to hold parents
-	parents = new Vertex[n];
-	parents[0] = new Vertex(0, 0);
-	parents[0].setDist(-1);
-	
-	// Initialize the priority queue to contain every vertex with equal priority, infinity
+	// initialize lTable and nTable
+	lTable = new double[n][n];
+	nTable = new int[n][n];
 	for (int i = 0; i < n; i++) {
-	    priorityQueue.add(g.getVertex(i));
-	    priorityQueue.get(i).setDist(Double.MAX_VALUE);
-	    priorityQueue.get(i).setNumber(i);
-	}
-    
-	// then a single vertex is chosen and its priority is changed to 0
-	priorityQueue.get(0).setDist(0);
-	// Remember, we want low key values to represent high priorities,
-	// so we should use a min heap instead of a max heap
-	
-	// while PQ is not empty
-	while (priorityQueue.size() > 0) {
-	        
-	    // u = deleteMin(PQ)
-	    Vertex u = deleteMin(priorityQueue);
-	        
-	    // for each v adjacent to u, do
-	    for (int i = 0; i < priorityQueue.size(); i++) {
-		if (priorityQueue.get(i) != u) {
-		    Vertex v = priorityQueue.get(i);
-		        
-		    // if (v is in PQ and weight (u, v) < PQ[v].getPriority())
-		    //parent[v] = u
-		    //PQ[v].setPriority(weight(u, v))
-		    
-		    if (g.getDistance(u, v) < v.getDist()) {
-			parents[v.getNumber()] = u;
-			priorityQueue.get(i).setDist(g.getDistance(u, v));
-		    }
-		}
+	    for (int j = 0; j < n; j++) {
+		lTable[i][j] = 0.00;
+		nTable[i][j] = -1;
 	    }
 	}
 	
-	// use information on parents to construct the minimum spanning tree
-	// check each branch to see whether it is visited
-	visited = new boolean[n];
+	long startTime = System.currentTimeMillis();
+		
+	// sort vertices
+	unsortedVertices = g.getVertices();
+	sortedVertices = g.sortVertices(unsortedVertices);
 	
-	// always start tour with vertex 0 
-	tourVertices.add(g.getVertex(0));
-	constructMST(0);
+	// fill L-Table and N-Table
+	fillTables(sortedVertices, n);
 	
-	// always end tour with vertex 0 
-	tourVertices.add(g.getVertex(0));
+	// Construct Bitonic tour
+	bitonicTour = findBitonicTour(n);
+		
+	long endTime = System.currentTimeMillis();
 	
 	// Begin output
 	if (n <= 10) {
 	    // Print vertices
-	    System.out.println(g.getVerticesString());
+	    System.out.println("X-Y Coordinates: \n" + g.getVerticesString(unsortedVertices));
 	    
 	    // Print adjacency matrix
 	    System.out.println("Adjacency matrix of graph weights:\n\n" + g.getMatrixString() + "\n");
 	    
-	    // Print greedy graph
-	    System.out.println("Minimum Spanning Tree:\nAdjacency matrix of graph weights:\n");
-	        
-	    for (int i = 0; i < adjMatrix.length; i++) {
-		System.out.print("      " + i);
-	    } 
-	        
-	    for (int i = 0; i < adjMatrix.length; i++) {
-		System.out.print("\n\n" + i + "   ");
-		for (int j = 0; j < adjMatrix.length; j++) {
-		    if (parents[i].getNumber() == j || parents[j].getNumber() == i) {
-			System.out.print(df.format(adjMatrix[i][j]) + "   ");
-			mstWeight += adjMatrix[i][j];
+	    // Print sorted vertices
+	    System.out.println("Sorted X-Y Coordinates: \n" + g.getVerticesString(sortedVertices));
+	    
+	    // Print L-Table
+	    System.out.print("L-Table:");
+	    for (int i = 0; i < lTable.length; i++) {
+		System.out.print("\n ");
+		for (int j = 0; j < lTable[i].length; j++) {
+		    System.out.print(df.format(lTable[i][j]) + "  ");
+		}
+	    }
+	    
+	    // Print N-Table
+	    System.out.print("\n\nN-Table:");
+	    for (int i = 0; i < nTable.length; i++) {
+		System.out.print("\n");
+		for (int j = 0; j < nTable[i].length; j++) {
+		    // if negative and first column, just print
+		    // if negative anywhere else OR positive and first column,
+		    // print with one extra space before
+		    // otherwise, print with two extra spaces before
+		    
+		    if (nTable[i][j] < 0 && j == 0) {
+			System.out.print(nTable[i][j]);
+		    }
+		    else if (nTable[i][j] < 0 || j == 0) {
+			System.out.print(" " + nTable[i][j]);
 		    }
 		    else {
-			System.out.print("0.00   ");
+			System.out.print("  " + nTable[i][j]);
+		    }
+		    
+		}
+	    }
+	}
+	
+	for (int i = 1; i < bitonicTour.size(); i++) {
+	    bitonicDistance += adjMatrix[bitonicTour.get(i)][bitonicTour.get(i-1)];
+	}
+	
+	// print bitonic tour
+	System.out.print("\n\nDistance using bitonic: " + df.format(bitonicDistance) + " for path ");
+	for (int i = 0; i < bitonicTour.size(); i++) {
+	    System.out.print(bitonicTour.get(i) + " ");
+	}
+	
+	System.out.println("\nRuntime for Bitonic TSP   : " + (endTime - startTime) + " milliseconds");
+    }
+    
+    static void fillTables(ArrayList<Vertex> vertices, int n) {
+	
+	for (int j = 1; j < n; j++) {
+	    for (int i = 0; i < j; i++) {
+		if ((i == 0) && (j == 1)) {
+		    lTable[i][j] = g.getDist(vertices.get(i), vertices.get(j));
+		    nTable[i][j] = i;
+		}
+		else if (j > i + 1) {
+
+		    lTable[i][j] = lTable[i][j-1] + g.getDist(vertices.get(j-1), vertices.get(j));
+		    nTable[i][j] = j - 1;
+		}
+		else {
+		    lTable[i][j] = Double.MAX_VALUE;
+		    for (int k = 0; k < i; k++) {
+			double q = lTable[k][i] + g.getDist(vertices.get(k), vertices.get(j));
+			if (q < lTable[i][j]) {
+			    lTable[i][j] = q;
+			    nTable[i][j] = k;
+			}
 		    }
 		}
 	    }
-	        
-	    // divide mstDistance by 2 to get correct result because it counts elements twice
-	    System.out.println("\n\nTotal weight of mst: " + df.format(mstWeight/2) + "\n");
-	        
-	    System.out.println("Pre-order traversal:\n");
-	    // use size() - 1 because tour goes to 0 again at end and we don't want to print it
-	    for (int i = 0; i < tourVertices.size() - 1; i++) {
-		System.out.println("Parent of " + tourVertices.get(i).getNumber() + " is " + parents[i].getNumber());
-	    }
 	}
-	
-	for (int i = 1; i < tourVertices.size(); i++) {
-	    mstDistance += g.getDistance(tourVertices.get(i), tourVertices.get(i-1));
-	}
-	
-	System.out.print("\nDistance using mst: " + df.format(mstDistance) + " for path ");
-	for (int i = 0; i < tourVertices.size(); i++) {
-	    System.out.print(tourVertices.get(i).getNumber() + " ");
-	}
-	
-	long endTime = System.currentTimeMillis();
-	System.out.println("\nRuntime for Mst TSP   : " + (endTime - startTime) + " milliseconds");
     }
     
-    private static Vertex deleteMin(ArrayList<Vertex> priorityQueue) {
-	double maximumDist = Double.MAX_VALUE;
-	int minimumIndex = 0;
+    static ArrayList<Integer> findBitonicTour(int n) {
 	
-	for (int i = 0; i < priorityQueue.size(); i++) {
-	    if (priorityQueue.get(i).getDist() < maximumDist) {
-		minimumIndex = i;
-		maximumDist = priorityQueue.get(i).getDist();
+	ArrayList<Integer> bitonic1 = new ArrayList<Integer>();
+	ArrayList<Integer> bitonic2 = new ArrayList<Integer>();
+	bitonic1.add(0);
+	bitonic2.add(0);
+	
+	int zeroIndex = 0;
+	// find index of vertex 0 in sorted vertices
+	for (int i = 0; i < n; i++) {
+	    if (sortedVertices.get(i).getNumber() == 0) {
+		zeroIndex = i;
+		break;
 	    }
 	}
 	
-	Vertex minimum = priorityQueue.get(minimumIndex);
-	priorityQueue.remove(minimumIndex);
-	return minimum;
-    }
-    
-    public static void constructMST(int node)
-    {
-	for (int i = 0; i < parents.length; i++) {
-	    if (node == parents[i].getNumber() && visited[i] == false) {
-		tourVertices.add(g.getVertex(i));
-		constructMST(i);
+	// add number left of 0 to tour so far
+	if (zeroIndex > 0) {
+	    bitonic2.add(sortedVertices.get(zeroIndex-1).getNumber());
+	} else {
+	    bitonic2.add(sortedVertices.get(n-1).getNumber());
+	}
+
+	boolean LtoR = true;
+	
+	int current = 0;
+	int next = nTable[n-2][n-1];
+	
+	int j = n;
+	// 3 nodes already decided (0 at beginning, 0 at end, second to last)
+	while (j > 3) {
+	    
+	    if (sortedVertices.get(current).x() < sortedVertices.get(next).x()) {
+		LtoR = true;
+	    } else {
+		LtoR = false;
+	    }
+	    
+	    if (LtoR) {
+		bitonic1.add(next);
+	    } else {
+		bitonic2.add(next);
+	    }
+	    
+	    current = next;
+	    
+	    // search that column for smallest value greater than 0
+	    double candidateValue = Double.MAX_VALUE;
+	    for (int k = 0; k < n; k++) {
+		if (lTable[k][current] > 0.00 && lTable[k][current] < candidateValue) {
+		    candidateValue = lTable[k][current];
+		    next = nTable[k][current];
+		}
+	    }
+	    	    
+	    j--;
+	}
+	
+	// add remaining vertex
+	for (int k = 1; k < n; k++) {
+	    if ((bitonic1.contains(k) == false) && (bitonic2.contains(k) == false)) {
+		bitonic1.add(k);
+		break;
 	    }
 	}
-	visited[node] = true;
+	
+	// add other half of path
+	for (int k = bitonic2.size() - 1; k > -1; k--)
+	{
+	    bitonic1.add(bitonic2.get(k));
+	}
+	
+	return bitonic1;
     }
 }
